@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <title>Inici de Sessió - Panell de Control</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-container {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h2>Inici de Sessió</h2>
+
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Usuari" required>
+            <input type="password" id="password" placeholder="Contrasenya" required>
+            <button type="submit">Entrar</button>
+            <div class="error" id="error-msg"></div>
+        </form>
+    </div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const usuari = document.getElementById('username').value;
+  const contrasenya = document.getElementById('password').value;
+
+  if (usuari === 'admin' && contrasenya === '1234') {
+    // marca la sessió com a vàlida
+    sessionStorage.setItem('loggedIn', '1');
+
+    // redirigeix reemplaçant l'entrada d'historial
+    window.location.replace('taula.html'); // canvia si el nom del fitxer és diferent
+  } else {
+    document.getElementById('error-msg').textContent = 'Usuari o contrasenya incorrectes';
+  }
+});
+</script>
+
+</body>
+</html>

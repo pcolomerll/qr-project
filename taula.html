@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard Feedback</title>
+  <style>
+    :root{
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --radius: 12px;
+      --shadow: 0 8px 24px rgba(15,23,42,0.06);
+      --glass: rgba(255,255,255,0.6);
+      --success: #16a34a;
+      --danger: #dc2626;
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;}
+    body{
+      background:
+        radial-gradient(800px 400px at 10% 10%, rgba(37,99,235,0.04), transparent),
+        var(--bg);
+      padding:24px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      color:#0f172a;
+    }
+
+    .container{
+      width:100%;
+      max-width:1100px;
+    }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .title {
+      display:flex;
+      flex-direction:column;
+    }
+    .title h1{ margin:0; font-size:20px; }
+    .title p{ margin:2px 0 0 0; color:var(--muted); font-size:13px; }
+
+    .controls {
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .search {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:var(--card);
+      padding:8px 12px;
+      border-radius:999px;
+      box-shadow:var(--shadow);
+      min-width:220px;
+    }
+    .search input{
+      border:0; outline:0; font-size:14px; background:transparent; width:180px;
+    }
+
+    .card {
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:16px;
+      box-shadow:var(--shadow);
+    }
+
+    #loading {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      justify-content:center;
+      padding:18px;
+      color:var(--muted);
+      background:linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6));
+      border-radius:10px;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+    }
+
+    .spinner {
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      border:3px solid rgba(0,0,0,0.08);
+      border-top-color:var(--accent);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .table-wrap{ overflow:auto; margin-top:14px; border-radius:10px; }
+    table {
+      border-collapse:collapse;
+      width:100%;
+      min-width:720px;
+      display: none;
+    }
+    th, td {
+      padding:12px 14px;
+      text-align:left;
+      border-bottom:1px solid #f1f5f9;
+      font-size:14px;
+      vertical-align:top;
+    }
+    thead th{
+      background:transparent;
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:0.04em;
+      font-weight:600;
+      position:sticky;
+      top:0;
+      backdrop-filter: blur(6px);
+      cursor:pointer;
+      user-select:none;
+    }
+    thead th .sort-ind { margin-left:8px; font-size:11px; opacity:0.7; }
+    tbody tr{
+      background:transparent;
+      transition: background .12s ease, transform .12s ease;
+    }
+    tbody tr:hover{
+      transform: translateY(-4px);
+      background: linear-gradient(90deg, rgba(37,99,235,0.03), transparent);
+    }
+
+    .avatar {
+      width:40px;height:40px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:700;
+    }
+    .avatar.p1{ background: linear-gradient(135deg,#60a5fa,#7c3aed); }
+    .avatar.p2{ background: linear-gradient(135deg,#f97316,#ef4444); }
+    .meta small { display:block;color:var(--muted); font-size:12px; }
+
+    .badge {
+      display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px;font-weight:600;
+      background:rgba(99,102,241,0.08);
+      color:#4f46e5;
+    }
+    .rating { font-weight:700; color:var(--accent); }
+
+    .toolbar{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+    .filters{ display:flex; gap:8px; align-items:center; }
+    select, .small-input {
+      padding:8px 10px;border-radius:10px;border:1px solid #e6eef9;background:linear-gradient(180deg,#fff,#fbfdff);
+      font-size:14px;
+    }
+    button.primary{
+      background:var(--accent); color:white; padding:8px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:600;
+    }
+
+    .empty { text-align:center;color:var(--muted); padding:18px; }
+
+    /* comment specific */
+    .comment {
+      max-width:560px;
+      line-height:1.3;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .comment.expanded {
+      white-space:pre-wrap; /* preserva salts de línia */
+      overflow:visible;
+    }
+    .comment .more {
+      color:var(--muted);
+      margin-left:6px;
+      font-weight:700;
+    }
+
+    /* pagination */
+    .pagination{ display:flex; gap:6px; align-items:center; justify-content:center; padding:12px 0; flex-wrap:wrap; }
+    .page-btn{ padding:6px 10px; border-radius:8px; border:1px solid #eef2ff; background:white; cursor:pointer; color:var(--muted); }
+    .page-btn.active{ background:linear-gradient(90deg,var(--accent),#06b6d4); color:white; border:0; }
+
+    /* chart area */
+    .chart-wrap{ margin-top:18px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .chart-card{ flex:1; min-width:260px; background:linear-gradient(180deg,#fff,#fbfdff); border-radius:10px; padding:12px; border:1px solid #f1f5f9; box-shadow: 0 6px 12px rgba(2,6,23,0.03); }
+    .chart-title{ font-weight:700; margin-bottom:8px; }
+    canvas#ratingChart{ width:100%; height:160px; display:block; }
+
+    @media (max-width:900px){
+      .search input{ width:100px; }
+      table{ min-width:600px; }
+    }
+    @media (max-width:600px){
+      .container{ padding:0 12px; }
+      thead th:nth-child(4), td:nth-child(4) { display:none; }
+      table{ min-width:480px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <h1>Feedback Clients</h1>
+        <p>Visor i exportador de respostes. Dades en directe des del full de Google Scripts.</p>
+      </div>
+
+      <div class="controls">
+        <div class="search" role="search" title="Cerca">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M21 21l-4.35-4.35" stroke="#64748b" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="11" r="6" stroke="#64748b" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input id="q" placeholder="Cerca per email, comentari o data..." />
+        </div>
+
+        <button class="primary" id="exportBtn">Exporta CSV</button>
+        <button class="primary" id="logoutBtn" style="background:#dc2626">Logout</button>
+
+      </div>
+    </header>
+
+    <section class="card">
+      <div id="loading">
+        <div class="spinner" aria-hidden></div>
+        <div id="loading-text">Carregant dades...</div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="feedback-table" aria-live="polite">
+          <thead>
+            <tr>
+              <th data-key="email">Contacte <span class="sort-ind" id="si-email"></span></th>
+              <th data-key="rating">Calificació <span class="sort-ind" id="si-rating"></span></th>
+              <th data-key="comment">Comentari <span class="sort-ind" id="si-comment"></span></th>
+              <th data-key="timestamp">Data i hora <span class="sort-ind" id="si-timestamp"></span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="toolbar">
+        <div class="filters">
+          <label for="minRating" style="color:var(--muted);font-size:13px">Filtra per mínim:</label>
+          <select id="minRating" aria-label="Filtra per qualificació">
+            <option value="0">Tots</option>
+            <option value="1">≥ 1</option>
+            <option value="2">≥ 2</option>
+            <option value="3">≥ 3</option>
+            <option value="4">≥ 4</option>
+            <option value="5">5</option>
+          </select>
+          <input id="filterDate" class="small-input" placeholder="Filtra per any (ex: 2025)" />
+          <label style="color:var(--muted);font-size:13px">Files per pàgina:</label>
+          <select id="pageSize">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+          </select>
+          <button id="apply" class="primary" style="background:#0ea5a4">Aplica</button>
+        </div>
+
+        <div id="summary" style="color:var(--muted);font-size:13px">Mostrant 0 respostes</div>
+      </div>
+
+      <div id="empty" class="empty" style="display:none">No s'han trobat respostes amb aquests filtres.</div>
+
+      <div id="pagination" class="pagination" style="display:none"></div>
+
+      <div class="chart-wrap">
+        <div class="chart-card">
+          <div class="chart-title">Distribució d'estrelles (filtre actual)</div>
+          <canvas id="ratingChart" aria-label="Gràfica de barres de la distribució d'estrelles" role="img"></canvas>
+          <div style="color:var(--muted);font-size:13px;margin-top:8px" id="chartSummary">—</div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <script>
+    if (!sessionStorage.getItem('loggedIn')) {
+      // replace per no deixar la pàgina protegida a l'historial
+      window.location.replace('login.html'); // posa aquí el nom correcte del teu login
+    }
+
+    const endpoint = 'https://script.google.com/macros/s/AKfycbyICZwR6FtDg6--vM4Tbazs_OOdd-2drcpgovynSi-AwqE3yjFLW3OJahDc55kIqR_f/exec';
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.clear();
+      localStorage.clear();
+      history.pushState(null, null, location.href);
+      window.onpopstate = function () {
+        history.pushState(null, null, location.href);
+      };
+      window.location.href = "login.html";
+    });
+
+    const table = document.getElementById('feedback-table');
+    const tbody = table.querySelector('tbody');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const qInput = document.getElementById('q');
+    const minRating = document.getElementById('minRating');
+    const filterDate = document.getElementById('filterDate');
+    const applyBtn = document.getElementById('apply');
+    const summary = document.getElementById('summary');
+    const emptyEl = document.getElementById('empty');
+    const exportBtn = document.getElementById('exportBtn');
+    const paginationEl = document.getElementById('pagination');
+    const pageSizeSel = document.getElementById('pageSize');
+
+    const ratingCanvas = document.getElementById('ratingChart');
+    const chartSummary = document.getElementById('chartSummary');
+    let chartCtx = ratingCanvas.getContext('2d');
+
+    let rawData = [];      // original array from endpoint
+    let filtered = [];     // after filters applied
+    let sortState = { key: 'timestamp', dir: 'desc' }; // default sort
+    let page = 1;
+    let pageSize = Number(pageSizeSel.value);
+
+    function formatDateISODefault(val){
+      const d = new Date(val);
+      if (isNaN(d)) return val;
+      return d.toLocaleString('ca-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function escapeHtml(s){
+      if (s == null) return '';
+      return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    // --- comment truncate/expand logic ---
+    function createCommentElement(fullText){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'comment';
+      wrapper.dataset.full = fullText == null ? '' : String(fullText);
+
+      const hasNewline = /\r|\n/.test(wrapper.dataset.full);
+      let displayText = wrapper.dataset.full.replace(/\r/g,'').split('\n')[0] || '';
+      if (hasNewline) {
+        if (displayText.length > 30) {
+          displayText = displayText.slice(0,30) + '...';
+        } else {
+          displayText = displayText + (wrapper.dataset.full.split('\n').length > 1 ? '...' : '');
+        }
+      } else {
+        if (displayText.length > 32) {
+          displayText = displayText.slice(0,32) + '...';
+        }
+      }
+
+      wrapper.textContent = displayText;
+
+      if (displayText !== wrapper.dataset.full) {
+        const more = document.createElement('span');
+        more.className = 'more';
+        more.textContent = 'veure més';
+        wrapper.appendChild(more);
+      }
+
+      wrapper.addEventListener('click', (e) => {
+        const isExpanded = wrapper.classList.contains('expanded');
+        if (isExpanded) {
+          wrapper.classList.remove('expanded');
+          const hasNL = /\r|\n/.test(wrapper.dataset.full);
+          let dt = wrapper.dataset.full.replace(/\r/g,'').split('\n')[0] || '';
+          if (hasNL) {
+            if (dt.length > 30) dt = dt.slice(0,30) + '...';
+            else dt = dt + (wrapper.dataset.full.split('\n').length > 1 ? '...' : '');
+          } else {
+            if (dt.length > 32) dt = dt.slice(0,32) + '...';
+          }
+          wrapper.textContent = dt;
+          if (dt !== wrapper.dataset.full) {
+            const more2 = document.createElement('span');
+            more2.className = 'more';
+            more2.textContent = 'veure més';
+            wrapper.appendChild(more2);
+          }
+        } else {
+          wrapper.classList.add('expanded');
+          wrapper.textContent = wrapper.dataset.full;
+          const less = document.createElement('span');
+          less.className = 'more';
+          less.textContent = 'tancar';
+          wrapper.appendChild(less);
+        }
+      });
+
+      return wrapper;
+    }
+
+    // --- end comment logic ---
+
+    function applyFiltersAndSort(){
+      const q = qInput.value.trim().toLowerCase();
+      const minR = Number(minRating.value);
+      const year = filterDate.value.trim();
+
+      filtered = rawData.filter(r => {
+        const email = (r[0] || '').toString().toLowerCase();
+        const rating = Number(r[1] || 0);
+        const comment = (r[2] || '').toString().toLowerCase();
+        const ts = (r[3] || '').toString();
+        if (minR && rating < minR) return false;
+        if (year && !ts.includes(year)) return false;
+        if (!q) return true;
+        return email.includes(q) || comment.includes(q) || ts.includes(q);
+      });
+
+      // sort
+      const k = sortState.key;
+      const dir = sortState.dir === 'asc' ? 1 : -1;
+      filtered.sort((a,b) => {
+        let va = (k === 'rating') ? Number(a[1] || 0)
+               : (k === 'email') ? (a[0] || '').toString().toLowerCase()
+               : (k === 'comment') ? (a[2] || '').toString().toLowerCase()
+               : (a[3] || '');
+        let vb = (k === 'rating') ? Number(b[1] || 0)
+               : (k === 'email') ? (b[0] || '').toString().toLowerCase()
+               : (k === 'comment') ? (b[2] || '').toString().toLowerCase()
+               : (b[3] || '');
+        if (k === 'timestamp') {
+          const ta = Date.parse(va) || 0;
+          const tb = Date.parse(vb) || 0;
+          return (ta - tb) * dir;
+        }
+        if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+      });
+
+      page = 1; // reset page when filters/sort change
+      renderPage();
+      renderChart(); // update chart based on filtered data
+    }
+
+    function renderPage(){
+      tbody.innerHTML = '';
+      if (!filtered || filtered.length === 0) {
+        table.style.display = 'none';
+        emptyEl.style.display = '';
+        paginationEl.style.display = 'none';
+        summary.textContent = 'Mostrant 0 respostes';
+        chartSummary.textContent = '0 respostes.';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      table.style.display = 'table';
+
+      pageSize = Number(pageSizeSel.value) || 10;
+      const total = filtered.length;
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      if (page > pages) page = pages;
+
+      const start = (page - 1) * pageSize;
+      const pageRows = filtered.slice(start, start + pageSize);
+
+      pageRows.forEach((row, idx) => {
+        const email = row[0] ?? '';
+        const rating = row[1] ?? '';
+        const comment = row[2] ?? '';
+        const ts = row[3] ?? '';
+
+        const tr = document.createElement('tr');
+
+        const tdContact = document.createElement('td');
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar ' + ((start + idx) % 2 ? 'p1' : 'p2');
+        avatar.textContent = (email[0] || '').toUpperCase();
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const nameLine = document.createElement('div');
+        nameLine.textContent = email;
+        const small = document.createElement('small');
+        small.textContent = 'ID: ' + ((row[4]) ? row[4] : ('r' + (1000 + start + idx)));
+        meta.appendChild(nameLine);
+        meta.appendChild(small);
+        tdContact.appendChild(avatar);
+        tdContact.appendChild(meta);
+        tdContact.style.display = 'flex';
+        tdContact.style.alignItems = 'center';
+        tdContact.style.gap = '12px';
+
+        const tdRating = document.createElement('td');
+        tdRating.innerHTML = '<span class="rating">' + escapeHtml(rating) + '</span>';
+
+        const tdComment = document.createElement('td');
+        const commentEl = createCommentElement(comment == null ? '' : String(comment));
+        tdComment.appendChild(commentEl);
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = formatDateISODefault(ts);
+
+        tr.appendChild(tdContact);
+        tr.appendChild(tdRating);
+        tr.appendChild(tdComment);
+        tr.appendChild(tdDate);
+        tbody.appendChild(tr);
+      });
+
+      summary.textContent = 'Mostrant ' + (start + 1) + '–' + Math.min(start + pageSize, filtered.length) + ' de ' + filtered.length + ' respostes';
+      paginationEl.style.display = 'flex';
+      renderPagination(Math.ceil(total / pageSize), page);
+      chartSummary.textContent = filtered.length + ' respostes en el filtre actual.';
+    }
+
+    function renderPagination(totalPages, current){
+      paginationEl.innerHTML = '';
+      const createBtn = (label, idx, cls) => {
+        const b = document.createElement('button');
+        b.className = 'page-btn' + (cls ? ' ' + cls : '');
+        b.textContent = label;
+        b.addEventListener('click', ()=>{ page = idx; renderPage(); });
+        return b;
+      };
+
+      const prev = document.createElement('button');
+      prev.className = 'page-btn';
+      prev.textContent = 'Anterior';
+      prev.disabled = current === 1;
+      prev.addEventListener('click', ()=>{ if (page>1) { page--; renderPage(); }});
+      paginationEl.appendChild(prev);
+
+      const windowSize = 5;
+      let start = Math.max(1, current - Math.floor(windowSize/2));
+      let end = Math.min(totalPages, start + windowSize - 1);
+      if (end - start < windowSize - 1) start = Math.max(1, end - windowSize + 1);
+
+      for (let i = start; i <= end; i++){
+        const cls = (i === current) ? 'active' : '';
+        paginationEl.appendChild(createBtn(i, i, cls));
+      }
+
+      const next = document.createElement('button');
+      next.className = 'page-btn';
+      next.textContent = 'Següent';
+      next.disabled = current === totalPages;
+      next.addEventListener('click', ()=>{ if (page<totalPages) { page++; renderPage(); }});
+      paginationEl.appendChild(next);
+    }
+
+    document.querySelectorAll('thead th').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        if (!key) return;
+        if (sortState.key === key) {
+          sortState.dir = (sortState.dir === 'asc') ? 'desc' : 'asc';
+        } else {
+          sortState.key = key;
+          sortState.dir = 'asc';
+        }
+        updateSortIndicators();
+        applyFiltersAndSort();
+      });
+    });
+
+    function updateSortIndicators(){
+      document.querySelectorAll('.sort-ind').forEach(el => el.textContent = '');
+      const el = document.getElementById('si-' + sortState.key);
+      if (el) el.textContent = sortState.dir === 'asc' ? '▲' : '▼';
+    }
+
+    function renderChart(){
+      const counts = [0,0,0,0,0];
+      filtered.forEach(r => {
+        const v = Number(r[1]);
+        if (!Number.isFinite(v)) return;
+        if (v >=1 && v <=5) counts[v-1] += 1;
+      });
+      drawBarChart(counts);
+    }
+
+    function drawBarChart(counts){
+      const ctx = chartCtx;
+      chartCtx = ratingCanvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = ratingCanvas.clientWidth;
+      const h = 160;
+      ratingCanvas.width = Math.floor(w * dpr);
+      ratingCanvas.height = Math.floor(h * dpr);
+      chartCtx.scale(dpr, dpr);
+      chartCtx.clearRect(0,0,w,h);
+
+      const margin = { left: 28, right: 18, top: 18, bottom: 30 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      const maxCount = Math.max(1, ...counts);
+      const barWidth = chartW / counts.length * 0.6;
+      const gap = (chartW - (barWidth * counts.length)) / (counts.length - 1 || 1);
+
+      for (let i = 0; i <= 4; i++){
+        const yy = margin.top + chartH * (i / 4);
+        chartCtx.fillStyle = '#e6eef9';
+        chartCtx.fillRect(margin.left, yy-0.5, chartW, 1);
+      }
+
+      counts.forEach((c, i) => {
+        const x = margin.left + i * (barWidth + gap);
+        const hBar = (c / maxCount) * chartH;
+        const y = margin.top + chartH - hBar;
+        const grad = chartCtx.createLinearGradient(x, y, x + barWidth, y + hBar);
+        grad.addColorStop(0, '#60a5fa');
+        grad.addColorStop(1, '#7c3aed');
+        chartCtx.fillStyle = grad;
+        chartCtx.fillRect(x, y, barWidth, hBar);
+        chartCtx.fillStyle = '#0f172a';
+        chartCtx.font = '12px Inter, Arial';
+        chartCtx.textAlign = 'center';
+        chartCtx.fillText((i+1) + '★', x + barWidth/2, margin.top + chartH + 14);
+        chartCtx.fillStyle = '#0f172a';
+        chartCtx.font = '13px Inter, Arial';
+        chartCtx.textAlign = 'center';
+        chartCtx.fillText(c.toString(), x + barWidth/2, y - 10);
+      });
+
+      chartCtx.setTransform(1,0,0,1,0,0);
+    }
+
+    // Export corregit: sense columna ID (Email, Calificació, Comentari, Data i hora)
+    exportBtn.addEventListener('click', ()=>{
+      if (!filtered || filtered.length === 0) { alert('No hi ha dades per exportar.'); return; }
+
+      const header = ['Email','Calificació','Comentari','Data i hora'];
+
+      const esc = s => ('"' + String(s ?? '').replace(/"/g,'""') + '"');
+
+      const rows = filtered.map(r => {
+        const email = r[0] ?? '';
+        const rating = r[1] ?? '';
+        const comment = (r[2] ?? '').toString().replace(/\r?\n/g, ' | ');
+        const ts = r[3] ?? '';
+        // retornem només les 4 columnes (sense id)
+        return [email, rating, comment, ts].map(esc).join(';');
+      });
+
+      const bom = '\uFEFF';
+      const csvContent = bom + [header.map(h => '"' + h.replace(/"/g,'""') + '"').join(';'), ...rows].join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'feedback_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    qInput.addEventListener('input', debounce(()=>{ applyFiltersAndSort(); }, 250));
+    applyBtn.addEventListener('click', applyFiltersAndSort);
+    minRating.addEventListener('change', applyFiltersAndSort);
+    pageSizeSel.addEventListener('change', ()=>{ page = 1; renderPage(); });
+    filterDate.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') applyFiltersAndSort(); });
+
+    fetch(endpoint)
+      .then(r => {
+        if (!r.ok) throw new Error('Network response was not ok');
+        return r.json();
+      })
+      .then(d => {
+        if (!Array.isArray(d)) throw new Error('Resposta inesperada: s\'esperava un array');
+        rawData = d;
+        loading.style.display = 'none';
+        updateSortIndicators();
+        applyFiltersAndSort();
+        table.style.display = (filtered.length>0) ? 'table' : 'none';
+      })
+      .catch(err => {
+        console.error('Error carregant dades:', err);
+        loadingText.textContent = 'Error carregant les dades.';
+        loading.style.color = 'var(--danger)';
+      });
+
+    function debounce(fn, ms){
+      let t;
+      return (...a) => { clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), ms); };
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', ()=> {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(()=>{ renderChart(); }, 200);
+    });
+
+  </script>
+</body>
+</html>

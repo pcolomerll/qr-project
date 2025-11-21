@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Formulario de Reseña</title>
+<style>
+  body{font-family:Arial,system-ui;display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5;margin:0}
+  .container{background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.1);width:320px;text-align:center}
+  .star{font-size:40px;cursor:pointer;color:#a3a3a3;transition:color .15s}
+  .highlighted,.selected{color:#ffd700}
+  .star-container{display:flex;justify-content:center;margin-bottom:12px;gap:6px}
+  input,textarea{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;font-size:14px}
+  input::placeholder{color:#9aa0a6} /* gris per "opcional" */
+  button{background:#28a745;color:#fff;padding:10px;border:none;border-radius:6px;cursor:pointer;margin-top:10px;width:100%}
+  button:disabled{background:#ccc;cursor:not-allowed}
+  .small-note{font-size:12px;color:#666;margin-top:8px}
+  #termsNote{font-size:10px;color:#555;margin-top:12px;display:none;text-align:center;line-height:1.3;padding:6px;border-radius:6px}
+  label{display:block;text-align:left;font-size:13px;margin-top:8px}
+  /* missatges inline */
+  #messageBox{margin-top:10px;font-size:13px;min-height:20px}
+  .msg-success{color:#116530;background:#e6f7ec;padding:8px;border-radius:6px;border:1px solid #c7edd6}
+  .msg-error{color:#7a1f1f;background:#fdecea;padding:8px;border-radius:6px;border:1px solid #f5c6c6}
+  .msg-info{color:#0f5132;background:#e9f7f0;padding:8px;border-radius:6px;border:1px solid #cfe7d6}
+  /* honeypot - ocult però detectable per bots */
+  .hp { position:absolute !important; left:-9999px !important; top:auto !important; width:1px !important; height:1px !important; overflow:hidden !important; }
+</style>
+</head>
+<body>
+  <div class="container" role="main">
+    <h2 style="margin:0 0 8px 0">Formulario de Reseña</h2>
+    <p style="margin:0 0 10px 0">¿Cómo calificarías tu experiencia?</p>
+
+    <div class="star-container" aria-hidden="true">
+      <span class="star" data-value="1" role="button" aria-label="1 estrella">&#9733;</span>
+      <span class="star" data-value="2" role="button" aria-label="2 estrellas">&#9733;</span>
+      <span class="star" data-value="3" role="button" aria-label="3 estrellas">&#9733;</span>
+      <span class="star" data-value="4" role="button" aria-label="4 estrellas">&#9733;</span>
+      <span class="star" data-value="5" role="button" aria-label="5 estrellas">&#9733;</span>
+    </div>
+
+    <form id="reviewForm" novalidate>
+      <div id="additionalFields" style="display:none">
+        <label for="feedback">¿Cómo podemos mejorar?</label>
+        <textarea id="feedback" name="feedback" rows="4" maxlength="1000" placeholder="Escribe tu comentario"></textarea>
+
+        <label for="email">Correo electrónico
+          <input type="email" id="email" name="email" placeholder="opcional">
+        </label>
+      </div>
+
+      <!-- honeypot: camps ocults per atrapar bots -->
+      <div class="hp" aria-hidden="true">
+        <label>Si us plau deixa en blanc: <input type="text" id="hp_field" name="hp_field" autocomplete="off"></label>
+      </div>
+
+      <button type="submit" id="submitButton" disabled>Enviar Reseña</button>
+
+      <div id="termsNote" aria-live="polite">
+        Al enviar acceptes els termes i condicions:
+      </div>
+
+      <div id="messageBox" aria-live="polite"></div>
+
+      <div class="small-note">Gràcies per ajudar a millorar el servei.</div>
+    </form>
+  </div>
+
+<script>
+  const stars = document.querySelectorAll('.star');
+  let selectedRating = 0;
+  const additionalFields = document.getElementById('additionalFields');
+  const emailInput = document.getElementById('email');
+  const feedbackInput = document.getElementById('feedback');
+  const submitButton = document.getElementById('submitButton');
+  const termsNote = document.getElementById('termsNote');
+  const messageBox = document.getElementById('messageBox');
+  const hpField = document.getElementById('hp_field');
+
+  // throttle: mínim 10s entre enviaments per navegador
+  const SUBMIT_COOLDOWN_MS = 10000;
+  function lastSubmitTime() { return parseInt(localStorage.getItem('lastSubmit') || '0', 10); }
+  function setLastSubmitTime(ts) { localStorage.setItem('lastSubmit', String(ts)); }
+
+  function showMessage(type, text) {
+    messageBox.innerHTML = '';
+    const div = document.createElement('div');
+    if (type === 'success') div.className = 'msg-success';
+    else if (type === 'error') div.className = 'msg-error';
+    else div.className = 'msg-info';
+    div.textContent = text;
+    messageBox.appendChild(div);
+  }
+
+  function clearMessage() { messageBox.innerHTML = ''; }
+
+  function highlightStars(rating){
+    stars.forEach(s => s.classList.toggle('highlighted', parseInt(s.dataset.value) <= rating));
+  }
+  function updateStars(rating){
+    stars.forEach(s => s.classList.toggle('selected', parseInt(s.dataset.value) <= rating));
+  }
+
+  function setUIForRating(r){
+    if (r === 0) {
+      additionalFields.style.display = 'none';
+      termsNote.style.display = 'none';
+      submitButton.disabled = true;
+      submitButton.textContent = 'Enviar Reseña';
+      return;
+    }
+    if (r >= 4) {
+      additionalFields.style.display = 'none';
+      termsNote.style.display = 'none';
+      submitButton.disabled = false;
+      submitButton.textContent = 'Enviar Reseña';
+    } else {
+      additionalFields.style.display = 'block';
+      termsNote.style.display = 'block';
+      submitButton.disabled = false;
+      submitButton.textContent = (emailInput.value.trim() !== '' ? 'Enviar i acceptar' : 'Enviar Reseña');
+    }
+  }
+
+  emailInput.addEventListener('input', () => {
+    if (selectedRating >= 1 && selectedRating < 4) {
+      submitButton.textContent = (emailInput.value.trim() !== '' ? 'Enviar i acceptar' : 'Enviar Reseña');
+    }
+  });
+
+  stars.forEach(star => {
+    star.addEventListener('mouseover', () => highlightStars(parseInt(star.dataset.value)));
+    star.addEventListener('mouseout', () => highlightStars(selectedRating));
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.dataset.value);
+      updateStars(selectedRating);
+      setUIForRating(selectedRating);
+      clearMessage();
+    });
+  });
+
+  document.getElementById('reviewForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    clearMessage();
+
+    if (selectedRating === 0) { showMessage('error','Selecciona una puntuació.'); return; }
+
+    // si >=4: redirigeix directament a Google Maps (no guardem)
+    if (selectedRating >= 4) {
+      window.location.href = 'https://g.page/r/CcyHqKHvbtoWEBM/review';
+      return;
+    }
+
+    // honeypot check: si hi ha valor, probablement bot
+    if (hpField && hpField.value.trim() !== '') {
+      // silencia i evita enviament
+      showMessage('error','Sembla que el formulari no s\'ha enviat correctament. Torna-ho a provar.');
+      return;
+    }
+
+    // cooldown check (client-side)
+    const now = Date.now();
+    const last = lastSubmitTime();
+    if (now - last < SUBMIT_COOLDOWN_MS) {
+      const secs = Math.ceil((SUBMIT_COOLDOWN_MS - (now - last))/1000);
+      showMessage('error', `És millor esperar ${secs}s abans d'enviar de nou.`);
+      return;
+    }
+
+    // feedback obligatori per 1-3
+    const fb = (feedbackInput.value || '').trim();
+    if (fb.length < 5) { showMessage('error','Descriu com podem millorar (mínim 5 caràcters).'); return; }
+
+    // validació email bàsica si present
+    const emailVal = (emailInput.value || '').trim();
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      showMessage('error','El correu no té format vàlid.'); return;
+    }
+
+    // Preparar payload amb consent_version i timestamp
+    const payload = {
+      email: emailVal || null,
+      calificacion: selectedRating,
+      feedback: fb,
+      consent_version: 'v1-2025-11-17',
+      consent_timestamp: new Date().toISOString(),
+      // noter: ip_hash i user_agent es recomanen guardar al servidor
+    };
+
+    // mostra loader/info
+    submitButton.disabled = true;
+    submitButton.textContent = 'Enviant...';
+    showMessage('info','Enviant el teu comentari...');
+
+    try {
+      // mantenim mode no-cors si el teu endpoint no accepta CORS; ideal és treure no-cors quan actualitzis servidor
+      await fetch('https://script.google.com/macros/s/AKfycbyICZwR6FtDg6--vM4Tbazs_OOdd-2drcpgovynSi-AwqE3yjFLW3OJahDc55kIqR_f/exec', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload),
+        mode: 'no-cors'
+      });
+
+      // marcar temps d'últim enviament per throttle client-side
+      setLastSubmitTime(Date.now());
+
+      // mostra missatge d'èxit inline
+      showMessage('success','Gràcies pel teu comentari!');
+
+      // netejar camps però mantenir estrelles visibles
+      feedbackInput.value = '';
+      emailInput.value = '';
+      submitButton.disabled = true;
+      submitButton.textContent = 'Enviar Reseña';
+    } catch (err) {
+      console.error(err);
+      showMessage('error','Hi ha hagut un problema en enviar. Torna-ho a provar.');
+      submitButton.disabled = false;
+      submitButton.textContent = (emailInput.value.trim() !== '' ? 'Enviar i acceptar' : 'Enviar Reseña');
+    }
+  });
+</script>
+
+<!-- footer legal fix -->
+<div id="legalFooter" style="
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 320px;
+    text-align: center;
+    font-size: 10px;
+    color: #666;
+    line-height: 1.3;
+    opacity: 0.85;
+    pointer-events: none;
+">
+  El teu comentari i correu serà emmagatzemat per aquest negoci per poder respondre i millorar el servei. <br>
+  Pots sol·licitar esborrat a: propietari@example.com
+</div>
+
+</body>
+</html>
